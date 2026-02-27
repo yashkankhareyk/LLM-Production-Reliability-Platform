@@ -1,0 +1,1 @@
+# Contract: publish/subscribe interface

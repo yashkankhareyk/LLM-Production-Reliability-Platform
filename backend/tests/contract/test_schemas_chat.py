@@ -1,0 +1,1 @@
+# request/response schema compatibility
