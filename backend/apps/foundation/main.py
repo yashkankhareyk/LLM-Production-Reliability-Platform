@@ -1,1 +1,13 @@
 # Entrypoint (creates app, wiring, starts server)
+import uvicorn
+from apps.foundation.api.app import create_app
+
+app = create_app()
+
+if __name__ == "__main__":
+    uvicorn.run(
+        "apps.foundation.main:app",
+        host="0.0.0.0",
+        port=8001,
+        reload=True,
+    )

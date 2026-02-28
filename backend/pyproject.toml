@@ -1,1 +1,41 @@
 # Python dependencies and tooling config
+[project]
+name = "llm-reliability-platform"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "httpx>=0.27.0",
+    "redis>=5.0",
+    "python-dotenv>=1.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.5.0",
+]
+llm = [
+    "openai>=1.40",
+    "langchain>=0.2",
+    "langchain-openai>=0.1",
+    "langgraph>=0.2",
+]
+vector = [
+    "faiss-cpu>=1.8",
+    "langchain-community>=0.2",
+    "sentence-transformers>=3.0",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["apps*", "shared*", "configs*"]
