@@ -5,6 +5,7 @@ from fastapi import (
     UploadFile,
     File,
     HTTPException,
+    Query,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
@@ -18,6 +19,9 @@ FOUNDATION_URL = os.getenv(
 )
 INTELLIGENCE_URL = os.getenv(
     "INTELLIGENCE_URL", "http://localhost:8002"
+)
+OBSERVABILITY_URL = os.getenv(
+    "OBSERVABILITY_URL", "http://localhost:8003"
 )
 
 
@@ -137,4 +141,82 @@ def create_app() -> FastAPI:
             )
             return resp.json()
 
+  # ─── OBSERVABILITY ENDPOINTS ────────────────────
+
+    @app.get(
+        "/v1/events",
+        summary="View all events",
+    )
+    async def get_events(
+        correlation_id: str = Query(None),
+        event_type: str = Query(None),
+        layer: str = Query(None),
+        limit: int = Query(50),
+    ):
+        async with httpx.AsyncClient(
+            timeout=10.0
+        ) as client:
+            resp = await client.get(
+                f"{OBSERVABILITY_URL}/internal/obs/events",
+                params={
+                    "correlation_id": correlation_id,
+                    "event_type": event_type,
+                    "layer": layer,
+                    "limit": limit,
+                },
+            )
+            return resp.json()
+
+    @app.get(
+        "/v1/runs",
+        summary="View all runs (grouped events)",
+    )
+    async def get_runs(limit: int = Query(20)):
+        async with httpx.AsyncClient(
+            timeout=10.0
+        ) as client:
+            resp = await client.get(
+                f"{OBSERVABILITY_URL}/internal/obs/runs",
+                params={"limit": limit},
+            )
+            return resp.json()
+
+    @app.get(
+        "/v1/runs/{correlation_id}",
+        summary="View single run timeline",
+    )
+    async def get_run(correlation_id: str):
+        async with httpx.AsyncClient(
+            timeout=10.0
+        ) as client:
+            resp = await client.get(
+                f"{OBSERVABILITY_URL}/internal/obs/runs/{correlation_id}",
+            )
+            return resp.json()
+
+    @app.get(
+        "/v1/metrics",
+        summary="View platform metrics",
+    )
+    async def get_metrics():
+        async with httpx.AsyncClient(
+            timeout=10.0
+        ) as client:
+            resp = await client.get(
+                f"{OBSERVABILITY_URL}/internal/obs/metrics",
+            )
+            return resp.json()
+
+    @app.get(
+        "/v1/event-types",
+        summary="List all event types with counts",
+    )
+    async def get_event_types():
+        async with httpx.AsyncClient(
+            timeout=10.0
+        ) as client:
+            resp = await client.get(
+                f"{OBSERVABILITY_URL}/internal/obs/event-types",
+            )
+            return resp.json()
     return app
