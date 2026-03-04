@@ -124,6 +124,7 @@ docker compose up -d
 ```bash
 cd backend
 pip install -e ".[dev]"
+pip install -e ".[dev,llm,vector]"
 python -m apps.foundation.main
 ```
 
@@ -139,7 +140,9 @@ Expected:
 { "status": "ok" }
 ```
 
----
+# Terminal 2: Layer 3 (Intelligence)
+
+python -m apps.intelligence.main # port 8002
 
 ### Terminal 3 – Layer 5 (Presentation)
 
