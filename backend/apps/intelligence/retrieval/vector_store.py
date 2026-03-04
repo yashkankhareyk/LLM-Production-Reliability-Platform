@@ -1,5 +1,4 @@
 """Vector retrieval using FAISS + sentence-transformers."""
-import os
 import json
 import logging
 import numpy as np
@@ -18,16 +17,19 @@ try:
     VECTOR_AVAILABLE = True
 except ImportError:
     VECTOR_AVAILABLE = False
-    logger.warning("faiss/sentence-transformers not installed")
+    logger.warning(
+        "faiss/sentence-transformers not installed. "
+        "Run: pip install faiss-cpu sentence-transformers"
+    )
 
 
 class VectorStoreRetrieval(RetrievalStrategy):
-    """
-    FAISS-based vector search.
-    Documents are stored as JSON alongside the FAISS index.
-    """
 
-    def __init__(self, store_path: str, model_name: str = "all-MiniLM-L6-v2"):
+    def __init__(
+        self,
+        store_path: str,
+        model_name: str = "all-MiniLM-L6-v2",
+    ):
         self.store_path = Path(store_path)
         self.store_path.mkdir(parents=True, exist_ok=True)
 
@@ -35,8 +37,11 @@ class VectorStoreRetrieval(RetrievalStrategy):
         self.docs_path = self.store_path / "documents.json"
 
         if VECTOR_AVAILABLE:
+            logger.info(f"Loading embedding model: {model_name}")
             self.encoder = SentenceTransformer(model_name)
-            self.dimension = self.encoder.get_sentence_embedding_dimension()
+            self.dimension = (
+                self.encoder.get_sentence_embedding_dimension()
+            )
             self._load_or_create_index()
         else:
             self.index = None
@@ -51,31 +56,58 @@ class VectorStoreRetrieval(RetrievalStrategy):
                 f"Loaded vector store: {len(self.documents)} documents"
             )
         else:
-            self.index = faiss.IndexFlatL2(self.dimension)
+            self.index = faiss.IndexFlatIP(self.dimension)
             self.documents = []
             logger.info("Created empty vector store")
 
     def ingest(self, texts: List[str], source_paths: List[str]):
         """Add documents to the vector store."""
         if not VECTOR_AVAILABLE:
-            raise RuntimeError("Vector dependencies not installed")
+            raise RuntimeError(
+                "Vector dependencies not installed. "
+                "Run: pip install faiss-cpu sentence-transformers"
+            )
 
-        embeddings = self.encoder.encode(texts)
+        if not texts:
+            return
+
+        # Encode
+        embeddings = self.encoder.encode(
+            texts, show_progress_bar=True, normalize_embeddings=True
+        )
         embeddings = np.array(embeddings).astype("float32")
 
+        # Add to index
         self.index.add(embeddings)
 
+        # Store documents
         for text, path in zip(texts, source_paths):
             self.documents.append(
                 {"content": text, "source_path": path}
             )
 
-        # Persist
+        # Persist to disk
         faiss.write_index(self.index, str(self.index_path))
         with open(self.docs_path, "w") as f:
-            json.dump(self.documents, f)
+            json.dump(self.documents, f, indent=2)
 
-        logger.info(f"Ingested {len(texts)} documents")
+        logger.info(
+            f"Ingested {len(texts)} chunks. "
+            f"Total: {len(self.documents)}"
+        )
+
+    def clear(self):
+        """Delete all documents and reset index."""
+        if VECTOR_AVAILABLE:
+            self.index = faiss.IndexFlatIP(self.dimension)
+        self.documents = []
+
+        if self.index_path.exists():
+            self.index_path.unlink()
+        if self.docs_path.exists():
+            self.docs_path.unlink()
+
+        logger.info("Vector store cleared")
 
     async def search(
         self, query: str, top_k: int = 3
@@ -85,18 +117,20 @@ class VectorStoreRetrieval(RetrievalStrategy):
         if self.index.ntotal == 0:
             return []
 
-        query_vec = self.encoder.encode([query])
+        # Encode query
+        query_vec = self.encoder.encode(
+            [query], normalize_embeddings=True
+        )
         query_vec = np.array(query_vec).astype("float32")
 
-        distances, indices = self.index.search(query_vec, top_k)
+        # Search
+        scores, indices = self.index.search(query_vec, top_k)
 
         results = []
-        for dist, idx in zip(distances[0], indices[0]):
+        for score, idx in zip(scores[0], indices[0]):
             if idx == -1:
                 continue
 
-            # Convert L2 distance to similarity score (0-1)
-            score = 1.0 / (1.0 + float(dist))
             doc = self.documents[idx]
 
             results.append(
@@ -104,7 +138,7 @@ class VectorStoreRetrieval(RetrievalStrategy):
                     content=doc["content"],
                     source_type="vector",
                     source_path=doc["source_path"],
-                    score=round(score, 4),
+                    score=round(float(score), 4),
                 )
             )
 
