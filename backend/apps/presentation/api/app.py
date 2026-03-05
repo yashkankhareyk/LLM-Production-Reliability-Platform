@@ -1,12 +1,8 @@
-<<<<<<< Updated upstream
-import os
-=======
 
 import os
 
 from fastapi import Query
 from pypika import Query as PypikaQuery
->>>>>>> Stashed changes
 import httpx
 from fastapi import (
     FastAPI,
@@ -38,14 +34,9 @@ INTELLIGENCE_URL = os.getenv(
 OBSERVABILITY_URL = os.getenv(
     "OBSERVABILITY_URL", "http://localhost:8003"
 )
-<<<<<<< Updated upstream
-
-
-=======
 ORCHESTRATION_URL = os.getenv(
     "ORCHESTRATION_URL", "http://localhost:8004"
 )
->>>>>>> Stashed changes
 def create_app() -> FastAPI:
     app = FastAPI(title="Layer 5: API Gateway", version="0.2.0")
 
@@ -63,22 +54,6 @@ def create_app() -> FastAPI:
 
     # ─── CHAT ───────────────────────────────────────────
 
-<<<<<<< Updated upstream
-    @app.post("/v1/chat", response_model=ChatResponse)
-    async def public_chat(request: ChatRequest):
-        try:
-            if request.use_rag:
-                url = f"{INTELLIGENCE_URL}/internal/rag/answer"
-            else:
-                url = f"{FOUNDATION_URL}/internal/llm/chat"
-
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                resp = await client.post(
-                    url, json=request.model_dump()
-                )
-                resp.raise_for_status()
-                return ChatResponse(**resp.json())
-=======
     @app.post(
         "/v1/chat",
         response_model=ChatResponse,
@@ -132,7 +107,6 @@ def create_app() -> FastAPI:
                     )
                     resp.raise_for_status()
                     return ChatResponse(**resp.json())
->>>>>>> Stashed changes
 
         except httpx.HTTPError as e:
             raise HTTPException(502, f"Service error: {e}")
@@ -296,8 +270,6 @@ def create_app() -> FastAPI:
                 f"{OBSERVABILITY_URL}/internal/obs/event-types",
             )
             return resp.json()
-<<<<<<< Updated upstream
-=======
 
         # ─── AGENT (full step details) ──────────────────
 
@@ -337,5 +309,4 @@ def create_app() -> FastAPI:
             )
             return resp.json()
 
->>>>>>> Stashed changes
     return app

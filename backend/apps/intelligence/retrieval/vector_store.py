@@ -1,6 +1,3 @@
-<<<<<<< Updated upstream
-"""Vector retrieval using FAISS + sentence-transformers."""
-=======
 # """Vector retrieval using FAISS + sentence-transformers."""
 # import os
 # import json
@@ -116,7 +113,6 @@
 #     async def health_check(self) -> bool:
 #         return VECTOR_AVAILABLE and self.index is not None
 """Vector retrieval with keyword filtering for better accuracy."""
->>>>>>> Stashed changes
 import json
 import logging
 import numpy as np
@@ -180,19 +176,6 @@ class VectorStoreRetrieval(RetrievalStrategy):
 
     def ingest(self, texts: List[str], source_paths: List[str]):
         if not VECTOR_AVAILABLE:
-<<<<<<< Updated upstream
-            raise RuntimeError(
-                "Vector dependencies not installed. "
-                "Run: pip install faiss-cpu sentence-transformers"
-            )
-
-        if not texts:
-            return
-
-        # Encode
-        embeddings = self.encoder.encode(
-            texts, show_progress_bar=True, normalize_embeddings=True
-=======
             raise RuntimeError("Vector deps not installed")
         if not texts:
             return
@@ -201,7 +184,6 @@ class VectorStoreRetrieval(RetrievalStrategy):
             texts,
             show_progress_bar=True,
             normalize_embeddings=True,
->>>>>>> Stashed changes
         )
         embeddings = np.array(embeddings).astype("float32")
 
@@ -214,10 +196,6 @@ class VectorStoreRetrieval(RetrievalStrategy):
                 {"content": text, "source_path": path}
             )
 
-<<<<<<< Updated upstream
-        # Persist to disk
-=======
->>>>>>> Stashed changes
         faiss.write_index(self.index, str(self.index_path))
         with open(self.docs_path, "w") as f:
             json.dump(self.documents, f, indent=2)
@@ -228,25 +206,13 @@ class VectorStoreRetrieval(RetrievalStrategy):
         )
 
     def clear(self):
-<<<<<<< Updated upstream
-        """Delete all documents and reset index."""
         if VECTOR_AVAILABLE:
             self.index = faiss.IndexFlatIP(self.dimension)
         self.documents = []
-
-=======
-        if VECTOR_AVAILABLE:
-            self.index = faiss.IndexFlatIP(self.dimension)
-        self.documents = []
->>>>>>> Stashed changes
         if self.index_path.exists():
             self.index_path.unlink()
         if self.docs_path.exists():
             self.docs_path.unlink()
-<<<<<<< Updated upstream
-
-        logger.info("Vector store cleared")
-=======
         logger.info("Vector store cleared")
 
     def _keyword_filter(
@@ -309,7 +275,6 @@ class VectorStoreRetrieval(RetrievalStrategy):
         )
 
         return scored
->>>>>>> Stashed changes
 
     async def search(
         self, query: str, top_k: int = 5
@@ -319,29 +284,15 @@ class VectorStoreRetrieval(RetrievalStrategy):
         if self.index.ntotal == 0:
             return []
 
-<<<<<<< Updated upstream
-        # Encode query
-=======
         # Get MORE results from vector search
         # then filter with keywords
         fetch_k = min(top_k * 5, self.index.ntotal)
 
->>>>>>> Stashed changes
         query_vec = self.encoder.encode(
             [query], normalize_embeddings=True
         )
         query_vec = np.array(query_vec).astype("float32")
 
-<<<<<<< Updated upstream
-        # Search
-        scores, indices = self.index.search(query_vec, top_k)
-
-        results = []
-        for score, idx in zip(scores[0], indices[0]):
-            if idx == -1:
-                continue
-
-=======
         scores, indices = self.index.search(query_vec, fetch_k)
 
         # Build raw results
@@ -349,7 +300,6 @@ class VectorStoreRetrieval(RetrievalStrategy):
         for score, idx in zip(scores[0], indices[0]):
             if idx == -1:
                 continue
->>>>>>> Stashed changes
             doc = self.documents[idx]
             raw_results.append(
                 {
@@ -369,13 +319,8 @@ class VectorStoreRetrieval(RetrievalStrategy):
                 RetrievalSource(
                     content=item["content"],
                     source_type="vector",
-<<<<<<< Updated upstream
-                    source_path=doc["source_path"],
-                    score=round(float(score), 4),
-=======
                     source_path=item["source_path"],
                     score=item["combined_score"],
->>>>>>> Stashed changes
                 )
             )
 
