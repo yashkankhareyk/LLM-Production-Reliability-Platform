@@ -5,6 +5,7 @@ from shared.schemas.chat import ChatRequest, ChatResponse
 from apps.foundation.core.llm_service import LLMService
 from apps.foundation.providers.grok_adapter import GrokProvider
 from apps.foundation.providers.openrouter_adapter import OpenRouterProvider
+from apps.foundation.providers.mock_adapter import MockProvider
 
 load_dotenv()
 
@@ -34,7 +35,8 @@ def create_llm_service() -> LLMService:
                 ),
             )
         )
-
+    # Always add mock as last fallback
+    providers.append(MockProvider())
     return LLMService(providers=providers)
 
 

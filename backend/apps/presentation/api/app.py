@@ -1,4 +1,12 @@
+<<<<<<< Updated upstream
 import os
+=======
+
+import os
+
+from fastapi import Query
+from pypika import Query as PypikaQuery
+>>>>>>> Stashed changes
 import httpx
 from fastapi import (
     FastAPI,
@@ -10,7 +18,14 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 from dotenv import load_dotenv
-from shared.schemas.chat import ChatRequest, ChatResponse
+import uuid
+from pydantic import BaseModel, Field
+from shared.schemas.chat import (
+    ChatRequest,
+    ChatResponse,
+    ChatMessage,
+    RetrievalSource,
+)
 
 load_dotenv()
 
@@ -23,8 +38,14 @@ INTELLIGENCE_URL = os.getenv(
 OBSERVABILITY_URL = os.getenv(
     "OBSERVABILITY_URL", "http://localhost:8003"
 )
+<<<<<<< Updated upstream
 
 
+=======
+ORCHESTRATION_URL = os.getenv(
+    "ORCHESTRATION_URL", "http://localhost:8004"
+)
+>>>>>>> Stashed changes
 def create_app() -> FastAPI:
     app = FastAPI(title="Layer 5: API Gateway", version="0.2.0")
 
@@ -42,6 +63,7 @@ def create_app() -> FastAPI:
 
     # ─── CHAT ───────────────────────────────────────────
 
+<<<<<<< Updated upstream
     @app.post("/v1/chat", response_model=ChatResponse)
     async def public_chat(request: ChatRequest):
         try:
@@ -56,6 +78,61 @@ def create_app() -> FastAPI:
                 )
                 resp.raise_for_status()
                 return ChatResponse(**resp.json())
+=======
+    @app.post(
+        "/v1/chat",
+        response_model=ChatResponse,
+        summary="Chat — direct LLM or RAG agent",
+    )
+    async def chat(request: ChatRequest):
+        try:
+            if request.use_rag:
+                # ── Use LangGraph Agent (Layer 2) ──
+                async with httpx.AsyncClient(
+                    timeout=120.0
+                ) as client:
+                    resp = await client.post(
+                        f"{ORCHESTRATION_URL}/internal/agent/run",
+                        json={
+                            "query": request.messages[-1].content,
+                            "correlation_id": request.correlation_id,
+                            "max_tokens": request.max_tokens,
+                            "temperature": request.temperature,
+                        },
+                    )
+                    resp.raise_for_status()
+                    data = resp.json()
+
+                    return ChatResponse(
+                        message=ChatMessage(
+                            role="assistant",
+                            content=data["answer"],
+                        ),
+                        provider=data.get("provider", "unknown"),
+                        model=data.get("model", "unknown"),
+                        sources=[
+                            RetrievalSource(**s)
+                            for s in data.get("sources", [])
+                        ],
+                        tokens_used=data.get("tokens_used", 0),
+                        latency_ms=data.get("total_latency_ms", 0),
+                        correlation_id=data.get(
+                            "correlation_id",
+                            request.correlation_id,
+                        ),
+                    )
+            else:
+                # ── Direct LLM (Layer 1) ───────────
+                async with httpx.AsyncClient(
+                    timeout=60.0
+                ) as client:
+                    resp = await client.post(
+                        f"{FOUNDATION_URL}/internal/llm/chat",
+                        json=request.model_dump(),
+                    )
+                    resp.raise_for_status()
+                    return ChatResponse(**resp.json())
+>>>>>>> Stashed changes
 
         except httpx.HTTPError as e:
             raise HTTPException(502, f"Service error: {e}")
@@ -219,4 +296,46 @@ def create_app() -> FastAPI:
                 f"{OBSERVABILITY_URL}/internal/obs/event-types",
             )
             return resp.json()
+<<<<<<< Updated upstream
+=======
+
+        # ─── AGENT (full step details) ──────────────────
+
+    class AgentRequest(BaseModel):
+        query: str
+        correlation_id: str = Field(
+            default_factory=lambda: str(uuid.uuid4())
+        )
+        max_tokens: int = 512
+        temperature: float = 0.7
+
+    @app.post(
+        "/v1/agent/run",
+        summary="Run agent — returns full step details",
+        description=(
+            "Same as /v1/chat with use_rag=true but returns "
+            "search_path, step_details, and timing for each node."
+        ),
+    )
+    async def run_agent(req: AgentRequest):
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.post(
+                f"{ORCHESTRATION_URL}/internal/agent/run",
+                json=req.model_dump(),
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    @app.get(
+        "/v1/agent/graph",
+        summary="View agent workflow graph",
+    )
+    async def get_graph():
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                f"{ORCHESTRATION_URL}/internal/agent/graph",
+            )
+            return resp.json()
+
+>>>>>>> Stashed changes
     return app
