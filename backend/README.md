@@ -62,162 +62,67 @@ Separation ensures:
 - Scalable orchestration logic
 - Clear reliability boundaries
 
----
-
-## ⚙️ Setup Instructions
-
-### 1️⃣ Create Virtual Environment
-
-```bash
+⚙️ Setup
+1️⃣ Create Virtual Environment
 python -m venv venv
-venv\Scripts\activate  # Windows
-```
-
-### 2️⃣ Upgrade Packaging Tools
-
-```bash
-python -m pip install --upgrade pip setuptools wheel
-```
-
-### 3️⃣ Install Dependencies (Editable Mode)
-
-```bash
-pip install -e ".[dev]"
-```
-
-Optional dependency groups:
-
-```bash
+venv\Scripts\activate
+2️⃣ Install Dependencies
+pip install --upgrade pip
 pip install -e ".[dev,llm,vector]"
-```
+🔐 Environment Variables
 
----
+Create .env inside backend/:
 
-## 🔐 Environment Variables
-
-Create a `.env` file inside `backend/`:
-
-```
-OPENAI_API_KEY=your_key_here
-OPENROUTER_API_KEY=your_key_here
-GROK_API_KEY=your_key_here
+OPENAI_API_KEY=
+OPENROUTER_API_KEY=
+GROK_API_KEY=
 REDIS_URL=redis://localhost:6379
-```
+▶️ Running the System
+🐳 Option A — With Docker (Recommended for Full Stack)
 
-⚠️ `.env` must exist in the `backend/` directory if running from there.
+This runs infrastructure like Redis and vector services.
 
----
-
-# ▶️ Running the Full System (Local Development)
-
-## Option A – With Infrastructure (Recommended)
-
-### Terminal 1 – Infrastructure
-
-```bash
+1️⃣ Start Infrastructure
 cd infra
 docker compose up -d
-```
+2️⃣ Start Backend Services
 
-### Terminal 2 – Layer 1 (Foundation)
+From backend/:
 
-```bash
-cd backend
-pip install -e ".[dev]"
-pip install -e ".[dev,llm,vector]"
-python -m apps.foundation.main
-```
+# Layer 1 – Foundation
 
-Health check:
+python -m apps.foundation.main # http://localhost:8001
 
-```
-http://localhost:8001/health
-```
+# Layer 3 – Intelligence
 
-Expected:
+python -m apps.intelligence.main # http://localhost:8002
 
-```json
-{ "status": "ok" }
-```
+# Layer 5 – Presentation
 
-# Terminal 2: Layer 3 (Intelligence)
+python -m apps.presentation.main # http://localhost:8000
 
-python -m apps.intelligence.main # port 8002
+Health checks:
 
-### Terminal 3 – Layer 5 (Presentation)
-
-```bash
-python -m apps.presentation.main
-```
-
-Health check:
-
-```
 http://localhost:8000/health
-```
+http://localhost:8001/health
+💻 Option B — Without Docker (Minimal Development Mode)
 
----
+Use this if you don’t need Redis or external infra.
 
-### Terminal 4 – Frontend
+From backend/:
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+uvicorn apps.foundation.main:app --port 8001 --reload
+uvicorn apps.intelligence.main:app --port 8002 --reload
+uvicorn apps.presentation.main:app --port 8000 --reload
 
-Open:
+⚠️ Ensure:
 
-```
-http://localhost:5173
-```
+Redis is disabled or mocked
 
-Expected:
+Vector services are local (FAISS)
 
-- "Backend: ok"
-- Type "Hello"
-- Response from Grok
-- If Grok fails → automatic fallback to OpenRouter
-
----
-
-## Option B – Without Docker (Minimal Mode)
-
-### Terminal 1 – Layer 1
-
-```bash
-cd backend
-python -m apps.foundation.main
-```
-
-### Terminal 2 – Layer 5
-
-```bash
-python -m apps.presentation.main
-```
-
-### Terminal 3 – Frontend
-
-```bash
-cd frontend
-npm run dev
-```
-
----
-
-## 🧪 Running Tests
-
-```bash
+🧪 Run Tests
 pytest
-```
-
----
-
-## 🧹 Linting
-
-```bash
-ruff check .
-```
 
 ---
 
