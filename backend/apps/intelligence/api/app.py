@@ -1,26 +1,40 @@
 import os
 import httpx
 import logging
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import (
+    FastAPI,
+    UploadFile,
+    File,
+    HTTPException,
+    Query,
+)
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List
 from dotenv import load_dotenv
 
 from shared.schemas.chat import ChatRequest, ChatResponse
 from shared.utils.file_parser import parse_file
 from apps.intelligence.core.rag_service import RAGService
-from apps.intelligence.retrieval.vector_store import VectorStoreRetrieval
-from apps.intelligence.retrieval.local_search import LocalFileRetrieval
+from apps.intelligence.retrieval.vector_store import (
+    VectorStoreRetrieval,
+)
+from apps.intelligence.retrieval.local_search import (
+    LocalFileRetrieval,
+)
 from apps.intelligence.retrieval.s3_search import S3Retrieval
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-FOUNDATION_URL = os.getenv("FOUNDATION_URL", "http://localhost:8001")
+FOUNDATION_URL = os.getenv(
+    "FOUNDATION_URL", "http://localhost:8001"
+)
 
 
-async def call_foundation_llm(request: ChatRequest) -> ChatResponse:
+async def call_foundation_llm(
+    request: ChatRequest,
+) -> ChatResponse:
     async with httpx.AsyncClient(timeout=60.0) as client:
         resp = await client.post(
             f"{FOUNDATION_URL}/internal/llm/chat",
@@ -31,7 +45,11 @@ async def call_foundation_llm(request: ChatRequest) -> ChatResponse:
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Layer 3: Intelligence", version="0.2.0")
+    app = FastAPI(
+        title="Layer 3: Intelligence",
+        version="0.2.0",
+        description="RAG service — upload files and ask questions",
+    )
 
     vector_store = VectorStoreRetrieval(
         store_path=os.getenv(
@@ -39,10 +57,14 @@ def create_app() -> FastAPI:
         )
     )
     local_search = LocalFileRetrieval(
-        docs_dir=os.getenv("LOCAL_DOCS_PATH", "./data/local_docs")
+        docs_dir=os.getenv(
+            "LOCAL_DOCS_PATH", "./data/local_docs"
+        )
     )
     s3_search = S3Retrieval(
-        bucket_path=os.getenv("S3_MOCK_PATH", "./data/s3_mock")
+        bucket_path=os.getenv(
+            "S3_MOCK_PATH", "./data/s3_mock"
+        )
     )
 
     rag_service = RAGService(
@@ -52,7 +74,7 @@ def create_app() -> FastAPI:
         llm_chat_fn=call_foundation_llm,
     )
 
-    # ─── HEALTH ─────────────────────────────────────────
+    # ─── HEALTH ─────────────────────────────────────
 
     @app.get("/health")
     async def health():
@@ -60,55 +82,72 @@ def create_app() -> FastAPI:
             "status": "ok",
             "layer": "intelligence",
             "vector_docs": len(vector_store.documents),
-            "vector_index_size": vector_store.index.ntotal
-            if vector_store.index
-            else 0,
         }
 
-    # ─── RAG ANSWER ─────────────────────────────────────
+    # ─── RAG ANSWER ─────────────────────────────────
 
-    @app.post("/internal/rag/answer", response_model=ChatResponse)
+    @app.post(
+        "/internal/rag/answer",
+        response_model=ChatResponse,
+    )
     async def rag_answer(request: ChatRequest):
         return await rag_service.answer(request)
 
-    # ─── FILE UPLOAD (CSV, PDF, TXT) ───────────────────
+    # ─── UPLOAD SINGLE FILE ─────────────────────────
+    #     Swagger UI shows "Choose File" button
 
-    @app.post("/internal/rag/ingest/file")
-    async def ingest_file(file: UploadFile = File(...)):
-        """
-        Upload a file (CSV, PDF, TXT) → parse → chunk → embed → store.
-        """
-        allowed = {".csv", ".pdf", ".txt", ".md"}
-        ext = ""
-        if file.filename:
-            ext = "." + file.filename.rsplit(".", 1)[-1].lower()
+    @app.post(
+        "/internal/rag/ingest/file",
+        summary="Upload a file to ingest",
+        description=(
+            "Choose a CSV, PDF, or TXT file from your computer. "
+            "It will be parsed, chunked, and stored in the vector store."
+        ),
+    )
+    async def ingest_file(
+        file: UploadFile = File(
+            ...,
+            description="Select a CSV, PDF, or TXT file",
+        ),
+    ):
+        # Validate file type
+        if not file.filename:
+            raise HTTPException(400, "No filename provided")
+
+        ext = file.filename.rsplit(".", 1)[-1].lower()
+        allowed = ["csv", "pdf", "txt", "md"]
 
         if ext not in allowed:
             raise HTTPException(
                 400,
-                f"Unsupported file type: {ext}. "
+                f"File type '.{ext}' not supported. "
                 f"Allowed: {allowed}",
             )
 
+        # Read file content
         content = await file.read()
 
         if len(content) == 0:
             raise HTTPException(400, "File is empty")
 
         logger.info(
-            f"Processing file: {file.filename} "
-            f"({len(content)} bytes)"
+            f"Uploading: {file.filename} "
+            f"({len(content)} bytes, type: .{ext})"
         )
 
-        texts, source_paths = parse_file(file.filename, content)
+        # Parse file into text chunks
+        texts, source_paths = parse_file(
+            file.filename, content
+        )
 
         if not texts:
             raise HTTPException(
                 400,
-                "Could not extract any text from file. "
-                "Check file content.",
+                "Could not extract text from this file. "
+                "Make sure it has content.",
             )
 
+        # Store in vector store
         vector_store.ingest(texts, source_paths)
 
         return {
@@ -116,23 +155,31 @@ def create_app() -> FastAPI:
             "filename": file.filename,
             "file_size_bytes": len(content),
             "chunks_created": len(texts),
-            "total_docs_in_store": len(vector_store.documents),
+            "total_docs_in_store": len(
+                vector_store.documents
+            ),
             "sample_chunks": [
                 {
                     "source": source_paths[i],
-                    "preview": texts[i][:200],
+                    "preview": texts[i][:300],
                 }
                 for i in range(min(3, len(texts)))
             ],
         }
 
-    # ─── MULTIPLE FILES UPLOAD ──────────────────────────
+    # ─── UPLOAD MULTIPLE FILES ──────────────────────
+    #     Swagger UI shows multiple "Choose File" buttons
 
-    @app.post("/internal/rag/ingest/files")
-    async def ingest_multiple_files(
-        files: List[UploadFile] = File(...),
+    @app.post(
+        "/internal/rag/ingest/files",
+        summary="Upload multiple files at once",
+    )
+    async def ingest_files(
+        files: List[UploadFile] = File(
+            ...,
+            description="Select one or more files (CSV, PDF, TXT)",
+        ),
     ):
-        """Upload multiple files at once."""
         results = []
 
         for file in files:
@@ -171,60 +218,67 @@ def create_app() -> FastAPI:
         return {
             "total_files": len(files),
             "results": results,
-            "total_docs_in_store": len(vector_store.documents),
+            "total_docs_in_store": len(
+                vector_store.documents
+            ),
         }
 
-    # ─── TEXT INGESTION (manual) ────────────────────────
+    # ─── TEXT INGESTION (manual) ────────────────────
 
     class IngestTextRequest(BaseModel):
         texts: List[str]
         source_paths: List[str]
 
-    @app.post("/internal/rag/ingest")
+    @app.post(
+        "/internal/rag/ingest/text",
+        summary="Ingest raw text manually",
+    )
     async def ingest_text(req: IngestTextRequest):
         if len(req.texts) != len(req.source_paths):
             raise HTTPException(
-                400, "texts and source_paths must be same length"
-            )
-
-        # Filter out empty/placeholder values
-        valid_texts = []
-        valid_paths = []
-        for text, path in zip(req.texts, req.source_paths):
-            if (
-                text
-                and text.strip()
-                and text.strip() != "string"
-            ):
-                valid_texts.append(text)
-                valid_paths.append(path)
-
-        if not valid_texts:
-            raise HTTPException(
                 400,
-                "No valid texts provided. "
-                "Did you send Swagger placeholder values?",
+                "texts and source_paths must be same length",
             )
 
-        vector_store.ingest(valid_texts, valid_paths)
+        valid = [
+            (t, p)
+            for t, p in zip(req.texts, req.source_paths)
+            if t and t.strip() and t.strip() != "string"
+        ]
+
+        if not valid:
+            raise HTTPException(
+                400, "No valid texts provided"
+            )
+
+        texts = [v[0] for v in valid]
+        paths = [v[1] for v in valid]
+
+        vector_store.ingest(texts, paths)
 
         return {
             "status": "ingested",
-            "count": len(valid_texts),
+            "count": len(texts),
             "total": len(vector_store.documents),
         }
 
-    # ─── SEARCH TEST (debug) ───────────────────────────
+    # ─── SEARCH TEST ───────────────────────────────
 
     class SearchRequest(BaseModel):
         query: str
         top_k: int = 5
 
-    @app.post("/internal/rag/test-search")
+    @app.post(
+        "/internal/rag/test-search",
+        summary="Test search across all 3 strategies",
+    )
     async def test_search(req: SearchRequest):
-        """Test all 3 search strategies independently."""
-        v = await vector_store.search(req.query, req.top_k)
-        l = await local_search.search(req.query, req.top_k)
+        v = await vector_store.search(
+            req.query, req.top_k
+        )
+        l = await local_search.search(
+            req.query, req.top_k
+        )
         s = await s3_search.search(req.query, req.top_k)
 
         return {
@@ -233,7 +287,7 @@ def create_app() -> FastAPI:
                 {
                     "source": r.source_path,
                     "score": r.score,
-                    "preview": r.content[:200],
+                    "content": r.content[:300],
                 }
                 for r in v
             ],
@@ -241,7 +295,7 @@ def create_app() -> FastAPI:
                 {
                     "source": r.source_path,
                     "score": r.score,
-                    "preview": r.content[:200],
+                    "content": r.content[:300],
                 }
                 for r in l
             ],
@@ -249,24 +303,28 @@ def create_app() -> FastAPI:
                 {
                     "source": r.source_path,
                     "score": r.score,
-                    "preview": r.content[:200],
+                    "content": r.content[:300],
                 }
                 for r in s
             ],
         }
 
-    # ─── LIST DOCUMENTS (debug) ────────────────────────
+    # ─── LIST DOCUMENTS ────────────────────────────
 
-    @app.get("/internal/rag/documents")
+    @app.get(
+        "/internal/rag/documents",
+        summary="See all stored documents",
+    )
     async def list_documents(
-        limit: int = 20, offset: int = 0
+        limit: int = Query(20, description="Max results"),
+        offset: int = Query(0, description="Skip N results"),
     ):
         docs = vector_store.documents
         subset = docs[offset : offset + limit]
 
         return {
             "total": len(docs),
-            "showing": f"{offset+1}-{offset+len(subset)}",
+            "showing": f"{offset+1} to {offset+len(subset)}",
             "documents": [
                 {
                     "index": offset + i,
@@ -277,11 +335,13 @@ def create_app() -> FastAPI:
             ],
         }
 
-    # ─── CLEAR VECTOR STORE ────────────────────────────
+    # ─── CLEAR STORE ───────────────────────────────
 
-    @app.delete("/internal/rag/clear")
+    @app.delete(
+        "/internal/rag/clear",
+        summary="Delete all documents",
+    )
     async def clear_store():
-        """Delete all documents from vector store."""
         count = len(vector_store.documents)
         vector_store.clear()
         return {
