@@ -6,9 +6,9 @@ app = create_app()
 client = TestClient(app)
 
 
-# ==============================
+
 # Test Chat API Success
-# ==============================
+
 def test_chat_api_success():
 
     response = client.post(
@@ -31,9 +31,9 @@ def test_chat_api_success():
     assert "latency_ms" in data
 
 
-# ==============================
+
 # Test Missing Messages
-# ==============================
+
 def test_chat_api_missing_messages():
 
     response = client.post(
@@ -44,9 +44,9 @@ def test_chat_api_missing_messages():
     assert response.status_code == 422
 
 
-# ==============================
+
 # Test Empty Messages
-# ==============================
+
 def test_chat_api_empty_messages():
 
     response = client.post(
@@ -59,9 +59,9 @@ def test_chat_api_empty_messages():
     assert response.status_code in [200, 422]
 
 
-# ==============================
+
 # Test Invalid Message Structure
-# ==============================
+
 def test_chat_api_invalid_message():
 
     response = client.post(
@@ -76,9 +76,9 @@ def test_chat_api_invalid_message():
     assert response.status_code == 422
 
 
-# ==============================
+
 # Test Temperature Parameter
-# ==============================
+
 def test_chat_api_temperature():
 
     response = client.post(
@@ -94,9 +94,9 @@ def test_chat_api_temperature():
     assert response.status_code == 200
 
 
-# ==============================
+
 # Test Max Tokens
-# ==============================
+
 def test_chat_api_max_tokens():
 
     response = client.post(
@@ -112,9 +112,9 @@ def test_chat_api_max_tokens():
     assert response.status_code == 200
 
 
-# ==============================
+
 # Test Correlation ID
-# ==============================
+
 def test_chat_api_correlation_id():
 
     response = client.post(
@@ -134,9 +134,9 @@ def test_chat_api_correlation_id():
     assert "correlation_id" in data
 
 
-# ==============================
+
 # Test Response Structure
-# ==============================
+
 def test_chat_api_response_schema():
 
     response = client.post(

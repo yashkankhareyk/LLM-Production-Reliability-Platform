@@ -7,9 +7,9 @@ from apps.foundation.providers.mock_adapter import MockProvider
 from shared.schemas.chat import ChatRequest, ChatResponse, ChatMessage
 
 
-# =========================
+
 # Test LLMService.chat
-# =========================
+
 @pytest.mark.asyncio
 async def test_llmservice_chat():
 
@@ -39,9 +39,9 @@ async def test_llmservice_chat():
     assert response.message.content == "Hello from Mock"
 
 
-# =========================
+
 # Test Provider fallback
-# =========================
+
 @pytest.mark.asyncio
 async def test_provider_fallback():
 
@@ -74,9 +74,9 @@ async def test_provider_fallback():
     assert response.message.content == "Fallback works"
 
 
-# =========================
+
 # Test health API
-# =========================
+
 from fastapi.testclient import TestClient
 from apps.foundation.api.app import create_app
 
