@@ -212,29 +212,59 @@ llm-reliability-platform/
 ---
 
 ## Quick Start
+⚙️ Setup
+1️⃣ Create Virtual Environment
+python -m venv venv
+venv\Scripts\activate
+2️⃣ Install Dependencies
+pip install --upgrade pip
+pip install -e ".[dev,llm,vector]"
+🔐 Environment Variables
 
-### 1) Setup
+Create .env inside backend/:
 
-```bash
-cd backend
-cp .env.example .env
-python -m venv .venv
-source .venv/bin/activate
-pip install -U pip
-pip install -e ".[dev]"
-pip install python-multipart pymupdf langgraph langchain-core websockets
-````
+OPENAI_API_KEY=
+OPENROUTER_API_KEY=
+GROK_API_KEY=
+REDIS_URL=redis://localhost:6379
+▶️ Running the System
+🐳 Option A — With Docker (Recommended for Full Stack)
 
-### 2) Configure Environment
+This runs infrastructure like Redis and vector services.
 
-Edit `backend/.env`:
+1️⃣ Start Infrastructure
+cd infra
+docker compose up -d
+2️⃣ Start Backend Services
 
-```env
-# LLM Providers (at least one required, mock works without any)
-GROK_API_KEY=xai-your-key-here
-GROK_BASE_URL=https://api.x.ai/v1
-OPENROUTER_API_KEY=sk-or-v1-your-key-here
-OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+From backend/:
+
+# Layer 1 – Foundation
+
+python -m apps.foundation.main # http://localhost:8001
+
+# Layer 3 – Intelligence
+
+python -m apps.intelligence.main # http://localhost:8002
+
+# Layer 5 – Presentation
+
+python -m apps.presentation.main # http://localhost:8000
+
+Health checks:
+
+http://localhost:8000/health
+http://localhost:8001/health
+💻 Option B — Without Docker (Minimal Development Mode)
+
+Use this if you don’t need Redis or external infra.
+
+From backend/:
+
+uvicorn apps.foundation.main:app --port 8001 --reload
+uvicorn apps.intelligence.main:app --port 8002 --reload
+uvicorn apps.presentation.main:app --port 8000 --reload
+
 
 # Service URLs
 FOUNDATION_URL=http://localhost:8001
@@ -616,3 +646,4 @@ TBD
 ```
 
 ```
+````

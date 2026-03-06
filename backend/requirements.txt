@@ -22,10 +22,8 @@ langgraph>=0.2
 faiss-cpu>=1.8
 langchain-community>=0.2
 sentence-transformers>=3.0
-<<<<<<< Updated upstream
-python-multipart
-pymupdf
-=======
 langgraph 
 langchain-core
->>>>>>> Stashed changes
+websockets
+python-multipart 
+pymupdf 
