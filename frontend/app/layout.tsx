@@ -60,6 +60,13 @@ export default function RootLayout({
               >
                 📂 {!collapsed && "Ingest Files"}
               </Link>
+  
+              <Link
+                href="/documents"
+                className="block px-3 py-2 rounded-md text-gray-400 hover:bg-gray-700 transition"
+              >
+                📄 {!collapsed && "Documents"}
+              </Link>
 
             </nav>
 
