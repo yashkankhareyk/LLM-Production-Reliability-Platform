@@ -1,7 +1,7 @@
 import { apiClient } from "./apiClient";
 
 export const sendChatMessage = async (message: string) => {
-  const response = await apiClient.post("/v1/agent/run", {
+  const response = await apiClient.post("/v1/chat", {
     messages: [
       {
         role: "user",
