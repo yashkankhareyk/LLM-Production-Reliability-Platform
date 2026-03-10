@@ -14,6 +14,7 @@ def create_llm_service() -> LLMService:
     providers = []
 
     grok_key = os.getenv("GROK_API_KEY")
+    grok_enabled = os.getenv("GROK_ENABLED", "false").lower() == "true"
     if grok_key:
         providers.append(
             GrokProvider(
@@ -24,8 +25,9 @@ def create_llm_service() -> LLMService:
             )
         )
 
+    # OpenRouter
     or_key = os.getenv("OPENROUTER_API_KEY")
-    if or_key:
+    if or_key and or_key != "your-openrouter-key":
         providers.append(
             OpenRouterProvider(
                 api_key=or_key,

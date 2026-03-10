@@ -308,26 +308,39 @@ class RAGNodes:
             },
         )
 
-        # Build prompt with context
         if sources:
+            # Limit context size to avoid token overflow
+            # Take top 3 sources, max 300 chars each
+            limited_sources = sources[:3]
+
             context_parts = []
-            for s in sources:
+            for s in limited_sources:
+                # Trim long content
+                content = s.content
+                if len(content) > 500:
+                    content = content[:500] + "..."
+
                 context_parts.append(
                     f"[Source: {s.source_type} | "
                     f"{s.source_path} | "
-                    f"Score: {s.score}]\n{s.content}"
+                    f"Score: {s.score}]\n{content}"
                 )
-            context_text = "\n\n---\n\n".join(context_parts)
+            context_text = "\n\n---\n\n".join(
+                context_parts
+            )
 
             messages = [
                 ChatMessage(
                     role="system",
                     content=(
                         "You are a helpful assistant. "
-                        "Answer using ONLY the context below. "
-                        "If the answer is in the context, "
-                        "provide it clearly with relevant details. "
-                        "If not found in context, say so.\n\n"
+                        "Answer the user's question using ONLY "
+                        "the context provided below. "
+                        "Be specific and include relevant details "
+                        "like names, numbers, and dates from the context. "
+                        "If the information is not in the context, "
+                        "say 'I could not find this information "
+                        "in the available data.'\n\n"
                         f"CONTEXT:\n{context_text}"
                     ),
                 ),
@@ -376,7 +389,8 @@ class RAGNodes:
             "model": response.model,
             "tokens_used": response.tokens_used,
             "current_step": "generate",
-            "step_details": state["step_details"] + [step_detail],
+            "step_details": state["step_details"]
+            + [step_detail],
         }
 
     # ─── CONDITIONAL EDGES ─────────────────────────

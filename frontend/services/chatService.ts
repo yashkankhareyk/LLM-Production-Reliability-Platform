@@ -8,7 +8,7 @@ export const sendChatMessage = async (message: string) => {
         content: message
       }
     ],
-    use_rag: false
+    use_rag: true
   });
 
   return response.data;
