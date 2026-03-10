@@ -312,7 +312,7 @@ def create_app() -> FastAPI:
     ):
         content = await file.read()
         async with httpx.AsyncClient(
-            timeout=120.0
+            timeout=600.0
         ) as client:
             resp = await client.post(
                 f"{INTELLIGENCE_URL}/internal/rag/ingest/file",
@@ -355,7 +355,7 @@ def create_app() -> FastAPI:
                 )
             )
         async with httpx.AsyncClient(
-            timeout=120.0
+            timeout=600.0
         ) as client:
             resp = await client.post(
                 f"{INTELLIGENCE_URL}/internal/rag/ingest/files",
