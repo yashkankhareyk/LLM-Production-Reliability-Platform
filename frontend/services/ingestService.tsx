@@ -1,5 +1,6 @@
 import { apiClient } from "./apiClient";
 
+/* Upload single file */
 export const uploadFile = async (file: File) => {
   const formData = new FormData();
   formData.append("file", file);
@@ -8,6 +9,7 @@ export const uploadFile = async (file: File) => {
   return res.data;
 };
 
+/* Upload multiple files */
 export const uploadFiles = async (files: File[]) => {
   const formData = new FormData();
 
@@ -19,11 +21,13 @@ export const uploadFiles = async (files: File[]) => {
   return res.data;
 };
 
+/* Get documents */
 export const getDocuments = async (limit = 20, offset = 0) => {
   const res = await apiClient.get(`/v1/documents?limit=${limit}&offset=${offset}`);
   return res.data;
 };
 
+/* DELETE ALL DOCUMENTS */
 export const deleteDocuments = async () => {
   const res = await apiClient.delete("/v1/documents");
   return res.data;
